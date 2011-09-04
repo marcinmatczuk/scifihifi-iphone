@@ -39,7 +39,9 @@
 
 #import <Security/SecItem.h>
 
-extern const CFTypeRef kSecClassGenericPassword;
+//extern const CFTypeRef kSecClassGenericPassword;
+extern CFTypeRef kSecClassGenericPassword
+    __OSX_AVAILABLE_STARTING(__MAC_NA, __IPHONE_2_0);
 
 #endif // TARGET_OS_MAC
 
@@ -55,6 +57,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED < 30000 && TARGET_IPHONE_SIMULATOR
 
+#pragma mark iOS Simulator methods
   //////////////////////////////////////////////////////////////////////
   //
   // Simulator methods
@@ -297,6 +300,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 
 #else
 
+#pragma mark iOS Real Device Methods
   //////////////////////////////////////////////////////////////////////
   //
   // iOS Device methods
