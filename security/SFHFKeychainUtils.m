@@ -365,11 +365,15 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	if (status != noErr)
 	{
 		// No existing item found--simply return nil for the password
-		if ((error != nil) && (status != errSecItemNotFound))
+		if (status != errSecItemNotFound)
 		{
-			//Only return an error if a real exception happened--not simply for "not found."
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
+            //Only return an error if a real exception happened--not simply for "not found."
+            if (error != nil)
+            {
+                *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
+            }
 		}
+        [attributeResult release];
 		return nil;
 	}
     
@@ -428,7 +432,9 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 		{
 			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-1999 userInfo:nil];
 		}
+        return nil;
 	}
+    
 	return [password autorelease];
 }
 
