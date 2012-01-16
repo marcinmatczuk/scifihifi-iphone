@@ -338,7 +338,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	// One likely way such an incorrect item could have come about is due to the previous (incorrect)
 	// version of this code (which set the password as a generic attribute instead of password data).
 	
-	NSDictionary *attributeResult = NULL;
+	NSDictionary *attributeResult = nil;
 	NSMutableDictionary *attributeQuery = [query mutableCopy];
 	[attributeQuery setObject:(id)kCFBooleanTrue forKey:(id)kSecReturnAttributes];
 
