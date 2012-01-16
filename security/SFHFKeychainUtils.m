@@ -339,7 +339,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	// version of this code (which set the password as a generic attribute instead of password data).
 	
 	NSDictionary *attributeResult = nil;
-	NSMutableDictionary *attributeQuery = [query mutableCopy];
+	NSMutableDictionary *attributeQuery = [[query mutableCopy] autorelease];
 	[attributeQuery setObject:(id)kCFBooleanTrue forKey:(id)kSecReturnAttributes];
 
 	// Check if there's a shared keychain access group name provided and set it appropriately.
@@ -362,10 +362,6 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	}
 
 	OSStatus status = SecItemCopyMatching((CFDictionaryRef)attributeQuery, (CFTypeRef *)&attributeResult);
-	
-	[attributeResult release];
-	[attributeQuery release];
-	
 	if (status != noErr)
 	{
 		// No existing item found--simply return nil for the password
@@ -376,6 +372,8 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 		}
 		return nil;
 	}
+    
+    [attributeResult release];
 	
 	// We have an existing item, now query for the password data associated with it.
 	
@@ -513,7 +511,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 			
 			NSDictionary *query = [[[NSDictionary alloc] initWithObjects:objects forKeys:keys] autorelease];
 
-			NSMutableDictionary *mutableQuery = [query mutableCopy];
+			NSMutableDictionary *mutableQuery = [[query mutableCopy] autorelease];
 
 			// Check if there's a shared keychain access group name provided and set it appropriately.
 			if (accessGroupNameOrNil)
@@ -558,7 +556,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 		
 		NSDictionary *query = [[[NSDictionary alloc] initWithObjects:objects forKeys:keys] autorelease];
 
-		NSMutableDictionary *mutableQuery = [query mutableCopy];
+		NSMutableDictionary *mutableQuery = [[query mutableCopy] autorelease];
 
 		// Check if there's a shared keychain access group name provided and set it appropriately.
 		if (accessGroupNameOrNil)
@@ -619,7 +617,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	
 	NSDictionary *query = [[[NSDictionary alloc] initWithObjects:objects forKeys:keys] autorelease];
 	
-	NSMutableDictionary *mutableQuery = [query mutableCopy];
+	NSMutableDictionary *mutableQuery = [[query mutableCopy] autorelease];
 	
 	// Check if there's a shared keychain access group name provided and set it appropriately.
 	if (accessGroupNameOrNil)
