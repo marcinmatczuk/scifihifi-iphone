@@ -46,268 +46,9 @@ extern CFTypeRef kSecClassGenericPassword __OSX_AVAILABLE_STARTING(__MAC_NA, __I
 
 static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < 30000 && TARGET_IPHONE_SIMULATOR
-@interface SFHFKeychainUtils (PrivateMethods)
-+ (SecKeychainItemRef)getKeychainItemReferenceForUsername:(NSString *)username andServiceName:(NSString *)serviceName error:(NSError **)error;
-@end
-#endif
 
 @implementation SFHFKeychainUtils
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < 30000 && TARGET_IPHONE_SIMULATOR
-
-#pragma mark - iOS Simulator methods
-  //////////////////////////////////////////////////////////////////////
-  //
-  // Simulator methods
-  //
-  //////////////////////////////////////////////////////////////////////
-
-+ (NSString *)getPasswordForUsername:(NSString *)username
-					  andServiceName:(NSString *)serviceName
-						 accessGroup:(NSString *)accessGroupNameOrNil
-							   error:(NSError **)error
-{
-	if (([username length] == 0) || ([serviceName length] == 0))
-	{
-		if (nil != error)
-		{
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
-		}
-		return nil;
-	}
-	
-	SecKeychainItemRef item = [SFHFKeychainUtils getKeychainItemReferenceForUsername:username andServiceName:serviceName error:error];
-	
-	if (((error != nil) && (*error != nil)) || !item)
-	{
-		return nil;
-	}
-	
-	// Ignore the shared keychain access group name. When I have more time I might look into supporting this.
-	if (accessGroupNameOrNil)
-	{
-		NSLog(@"Warning: accessGroupNameOrNil is ignored while running in the simulator. Please test on device. Patches welcome.");
-	}
-	
-	// from Advanced Mac OS X Programming, ch. 16
-    UInt32 length;
-    char *password;
-    SecKeychainAttribute attributes[8];
-    SecKeychainAttributeList list;
-	
-    attributes[0].tag = kSecAccountItemAttr;
-    attributes[1].tag = kSecDescriptionItemAttr;
-    attributes[2].tag = kSecLabelItemAttr;
-    attributes[3].tag = kSecModDateItemAttr;
-  
-    list.count = 4;
-    list.attr = attributes;
-    
-    
-    OSStatus status = SecKeychainItemCopyContent(item, NULL, &list, &length, (void **)&password);
-	
-	if (status != noErr)
-	{
-		if (error != nil)
-		{
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
-		}
-		return nil;
-    }
-  
-	NSString *passwordString = nil;
-	
-	if (password != NULL)
-    {
-		char passwordBuffer[1024];
-		
-		if (length > 1023)
-        {
-			length = 1023;
-		}
-		strncpy(passwordBuffer, password, length);
-		
-		passwordBuffer[length] = '\0';
-		passwordString = [NSString stringWithCString:passwordBuffer encoding:NSASCIIStringEncoding];
-	}
-	
-	SecKeychainItemFreeContent(&list, password);
-  
-    CFRelease(item);
-  
-    return passwordString;
-}
-
-
-+ (BOOL)storeUsername:(NSString *)username
-		  andPassword:(NSString *)password
-	   forServiceName:(NSString *)serviceName
-		  accessGroup:(NSString *)accessGroupNameOrNil
-	   updateExisting:(BOOL)updateExisting
-				error:(NSError **)error
-{
-	if (([username length] == 0) || ([password length] == 0) || ([serviceName length] == 0))
-	{
-		if (error != nil)
-		{
-			*error = [NSError errorWithDomain: SFHFKeychainUtilsErrorDomain code: -2000 userInfo: nil];
-		}
-		return NO;
-	}
-	
-	OSStatus status = noErr;
-	
-	SecKeychainItemRef item = [SFHFKeychainUtils getKeychainItemReferenceForUsername:username andServiceName:serviceName error:error];
-	
-	if ((error != nil) && (*error != nil) && ([*error code] != noErr))
-	{
-		return NO;
-	}
-
-	// Ignore the shared keychain access group name. When I have more time I might look into supporting this.
-	if (accessGroupNameOrNil)
-	{
-		NSLog(@"Warning: accessGroupNameOrNil is ignored while running in the simulator. Please test on device. Patches welcome.");
-	}	
-
-	if (error != nil)
-	{
-		*error = nil;
-	}
-
-	if (item)
-	{
-		status = SecKeychainItemModifyAttributesAndData(item,
-                                                        NULL,
-                                                        strlen([password UTF8String]),
-                                                        [password UTF8String]);
-		
-		CFRelease(item);
-	}
-	else
-	{
-		status = SecKeychainAddGenericPassword(NULL,                                     
-                                               strlen([serviceName UTF8String]),
-                                               [serviceName UTF8String],
-                                               strlen([username UTF8String]),
-                                               [username UTF8String],
-                                               strlen([password UTF8String]),
-                                               [password UTF8String],
-                                               NULL);
-	}
-	
-	if (status != noErr)
-	{
-		if (error != nil)
-		{
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
-		}
-		return NO;
-	}
-	return YES;
-}
-
-
-+ (BOOL)deleteItemForUsername:(NSString *)username
-			   andServiceName:(NSString *)serviceName
-				  accessGroup:(NSString *)accessGroupNameOrNil
-						error:(NSError **)error
-{
-	if (([username length] == 0) || ([serviceName length] == 0))
-	{
-		if (error != nil)
-		{
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
-		}
-		return NO;
-	}
-
-	if (error != nil)
-	{
-		*error = nil;
-	}
-
-	SecKeychainItemRef item = [SFHFKeychainUtils getKeychainItemReferenceForUsername:username andServiceName:serviceName error:error];
-	
-	if ((error != nil) && (*error != nil) && ([*error code] != noErr))
-	{
-		return NO;
-	}
-
-	// Ignore the shared keychain access group name. When I have more time I might look into supporting this.
-	if (accessGroupNameOrNil)
-	{
-		NSLog(@"Warning: accessGroupNameOrNil is ignored while running in the simulator. Please test on device. Patches welcome.");
-	}		
-
-	if (item)
-	{
-		OSStatus status = SecKeychainItemDelete(item);
-		CFRelease(item);
-
-		if (status != noErr)
-		{
-			if (error != nil)
-			{
-				*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
-				return NO;
-			}
-		}
-	}
-	return YES;
-}
-
-
-+ (SecKeychainItemRef)getKeychainItemReferenceForUsername:(NSString *)username andServiceName:(NSString *)serviceName error:(NSError **)error
-{
-	if (([username length] == 0) || ([serviceName length] == 0))
-	{
-		if (error != nil)
-		{
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
-		}
-		return nil;
-	}
-
-	if (error != nil)
-	{
-		*error = nil;
-	}
-
-	SecKeychainItemRef item;
-	
-	OSStatus status = SecKeychainFindGenericPassword(NULL,
-                                                     strlen([serviceName UTF8String]),
-                                                     [serviceName UTF8String],
-                                                     strlen([username UTF8String]),
-                                                     [username UTF8String],
-                                                     NULL,
-                                                     NULL,
-                                                     &item);
-	
-	if (status != noErr)
-	{
-		if (status != errSecItemNotFound)
-		{
-			if (error != nil)
-			{
-				*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
-			}
-		}
-		return nil;		
-	}
-	return item;
-}
-
-#else
-
-#pragma mark - iOS Real Device Methods
-  //////////////////////////////////////////////////////////////////////
-  //
-  // iOS Device methods
-  //
-  //////////////////////////////////////////////////////////////////////
 
 + (NSString *)getPasswordForUsername:(NSString *)username
 					  andServiceName:(NSString *)serviceName
@@ -343,6 +84,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	[attributeQuery setObject:(id)kCFBooleanTrue forKey:(id)kSecReturnAttributes];
 
 	// Check if there's a shared keychain access group name provided and set it appropriately.
+    // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
 	if (accessGroupNameOrNil)
 	{
         // Don't add empty string as access group specifier
@@ -520,6 +262,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 			NSMutableDictionary *mutableQuery = [[query mutableCopy] autorelease];
 
 			// Check if there's a shared keychain access group name provided and set it appropriately.
+            // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
 			if (accessGroupNameOrNil)
 			{
                 // Don't add empty string as access group specifier
@@ -565,6 +308,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 		NSMutableDictionary *mutableQuery = [[query mutableCopy] autorelease];
 
 		// Check if there's a shared keychain access group name provided and set it appropriately.
+        // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
 		if (accessGroupNameOrNil)
 		{
             // Don't add empty string as access group specifier
@@ -626,6 +370,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	NSMutableDictionary *mutableQuery = [[query mutableCopy] autorelease];
 	
 	// Check if there's a shared keychain access group name provided and set it appropriately.
+    // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
 	if (accessGroupNameOrNil)
 	{
         // Don't add empty string as access group specifier
@@ -656,7 +401,5 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	}
 	return YES;
 }
-
-#endif
 
 @end
