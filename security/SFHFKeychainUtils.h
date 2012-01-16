@@ -37,19 +37,19 @@
 
 + (NSString *)getPasswordForUsername: (NSString *)username
 					  andServiceName: (NSString *)serviceName
-						 accessGroup: (NSString *)accessGroupName
+						 accessGroup: (NSString *)accessGroupNameOrNil
 							   error: (NSError **)error;
 
 + (BOOL)storeUsername: (NSString *)username
 		  andPassword: (NSString *)password
 	   forServiceName: (NSString *)serviceName
-		  accessGroup: (NSString *)accessGroupName
+		  accessGroup: (NSString *)accessGroupNameOrNil
 	   updateExisting: (BOOL) updateExisting
 				error: (NSError **)error;
 
 + (BOOL)deleteItemForUsername: (NSString *)username
 			   andServiceName: (NSString *)serviceName
-				  accessGroup: (NSString *)accessGroupName
+				  accessGroup: (NSString *)accessGroupNameOrNil
 						error: (NSError **)error;
 
 @end
