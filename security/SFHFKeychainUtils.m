@@ -582,11 +582,14 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 		status = SecItemAdd((CFDictionaryRef)mutableQuery, NULL);
 	}
 	
-	if (error != nil && status != noErr) 
+	if (status != noErr)
 	{
 		// Something went wrong with adding the new item. Return the Keychain error code.
-		*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
-		return NO;
+        if (error != nil)
+        {
+            *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
+        }
+        return NO;
 	}
 	return YES;
 }
@@ -639,9 +642,12 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	
 	OSStatus status = SecItemDelete((CFDictionaryRef)mutableQuery);
 	
-	if (error != nil && status != noErr) 
+	if (status != noErr)
 	{
-		*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
+        if (error != nil)
+        {
+            *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
+        }
 		return NO;
 	}
 	return YES;
