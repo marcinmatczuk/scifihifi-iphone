@@ -51,45 +51,45 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 
 
 + (NSString *)getPasswordForUsername:(NSString *)username
-					  andServiceName:(NSString *)serviceName
-						 accessGroup:(NSString *)accessGroupNameOrNil
-							   error:(NSError **)error
+                      andServiceName:(NSString *)serviceName
+                         accessGroup:(NSString *)accessGroupNameOrNil
+                               error:(NSError **)error
 {
-	if (([username length] == 0) || ([serviceName length] == 0))
-	{
-		if (error != nil)
-		{
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
-		}
-		return nil;
-	}
-	
-	if (error != nil)
-	{
-		*error = nil;
-	}
-	
-	// Set up a query dictionary with the base query attributes: item type (generic), username, and service
+    if (([username length] == 0) || ([serviceName length] == 0))
+    {
+        if (error != nil)
+        {
+            *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
+        }
+        return nil;
+    }
+    
+    if (error != nil)
+    {
+        *error = nil;
+    }
+    
+    // Set up a query dictionary with the base query attributes: item type (generic), username, and service
     NSMutableDictionary *query = [[[NSMutableDictionary alloc] init] autorelease];
     [query setObject:kSecClassGenericPassword forKey:kSecClass];
     [query setObject:username forKey:kSecAttrAccount];
     [query setObject:serviceName forKey:kSecAttrService];
 
     // First do a query for attributes, in case we already have a Keychain item with no password data set.
-	// One likely way such an incorrect item could have come about is due to the previous (incorrect)
-	// version of this code (which set the password as a generic attribute instead of password data).
-	
-	NSDictionary *attributeResult = nil;
-	NSMutableDictionary *attributeQuery = [[query mutableCopy] autorelease];
-	[attributeQuery setObject:(id)kCFBooleanTrue forKey:(id)kSecReturnAttributes];
+    // One likely way such an incorrect item could have come about is due to the previous (incorrect)
+    // version of this code (which set the password as a generic attribute instead of password data).
+    
+    NSDictionary *attributeResult = nil;
+    NSMutableDictionary *attributeQuery = [[query mutableCopy] autorelease];
+    [attributeQuery setObject:(id)kCFBooleanTrue forKey:(id)kSecReturnAttributes];
 
-	// Check if there's a shared keychain access group name provided and set it appropriately.
+    // Check if there's a shared keychain access group name provided and set it appropriately.
     // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
 #warning FIXME: accessGroupNameOrNil is used only for attributeQuery but should also be used for passwordQuery (2nd call of SecItemCopyMatching()) - is it a bug?
     if (accessGroupNameOrNil)
-	{
+    {
         // Don't add empty string as access group specifier
-		if ([accessGroupNameOrNil length] == 0)
+        if ([accessGroupNameOrNil length] == 0)
         {
             if (error != nil)
             {
@@ -102,159 +102,159 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
             NSLog(@"Adding access group.");
             [attributeQuery setObject:(id)accessGroupNameOrNil forKey:(id)kSecAttrAccessGroup];
         }
-	}
+    }
 
-	OSStatus status = SecItemCopyMatching((CFDictionaryRef)attributeQuery, (CFTypeRef *)&attributeResult);
-	if (status != noErr)
-	{
-		// No existing item found--simply return nil for the password
-		if (status != errSecItemNotFound)
-		{
+    OSStatus status = SecItemCopyMatching((CFDictionaryRef)attributeQuery, (CFTypeRef *)&attributeResult);
+    if (status != noErr)
+    {
+        // No existing item found--simply return nil for the password
+        if (status != errSecItemNotFound)
+        {
             //Only return an error if a real exception happened--not simply for "not found."
             if (error != nil)
             {
                 *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
             }
-		}
+        }
         [attributeResult release];
-		return nil;
-	}
+        return nil;
+    }
     
     [attributeResult release];
-	
-	// We have an existing item, now query for the password data associated with it.
-	
-	NSData *resultData = nil;
-	NSMutableDictionary *passwordQuery = [query mutableCopy];
-	[passwordQuery setObject:(id)kCFBooleanTrue forKey:(id)kSecReturnData];
-
-	status = SecItemCopyMatching((CFDictionaryRef)passwordQuery, (CFTypeRef *)&resultData);
-
-	[resultData autorelease];
-	[passwordQuery release];
-	
-	if (status != noErr)
-	{
-		if (status == errSecItemNotFound)
-		{
-			// We found attributes for the item previously, but no password now, so return a special error.
-			// Users of this API will probably want to detect this error and prompt the user to
-			// re-enter their credentials.  When you attempt to store the re-entered credentials
-			// using storeUsername:andPassword:forServiceName:updateExisting:error
-			// the old, incorrect entry will be deleted and a new one with a properly encrypted
-			// password will be added.
-			if (error != nil)
-			{
-				*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-1999 userInfo:nil];
-			}
-		}
-		else
-		{
-			// Something else went wrong. Simply return the normal Keychain API error code.
-			if (error != nil)
-			{
-				*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
-			}
-		}
-		
-		return nil;
-	}
-  
-	NSString *password = nil;	
-  
-	if (resultData)
-	{
-		password = [[NSString alloc] initWithData:resultData encoding:NSUTF8StringEncoding];
-	}
-	else
-	{
-		// There is an existing item, but we weren't able to get password data for it for some reason,
-		// Possibly as a result of an item being incorrectly entered by the previous code.
-		// Set the -1999 error so the code above us can prompt the user again.
-		if (error != nil)
-		{
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-1999 userInfo:nil];
-		}
-        return nil;
-	}
     
-	return [password autorelease];
+    // We have an existing item, now query for the password data associated with it.
+    
+    NSData *resultData = nil;
+    NSMutableDictionary *passwordQuery = [query mutableCopy];
+    [passwordQuery setObject:(id)kCFBooleanTrue forKey:(id)kSecReturnData];
+
+    status = SecItemCopyMatching((CFDictionaryRef)passwordQuery, (CFTypeRef *)&resultData);
+
+    [resultData autorelease];
+    [passwordQuery release];
+    
+    if (status != noErr)
+    {
+        if (status == errSecItemNotFound)
+        {
+            // We found attributes for the item previously, but no password now, so return a special error.
+            // Users of this API will probably want to detect this error and prompt the user to
+            // re-enter their credentials.  When you attempt to store the re-entered credentials
+            // using storeUsername:andPassword:forServiceName:updateExisting:error
+            // the old, incorrect entry will be deleted and a new one with a properly encrypted
+            // password will be added.
+            if (error != nil)
+            {
+                *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-1999 userInfo:nil];
+            }
+        }
+        else
+        {
+            // Something else went wrong. Simply return the normal Keychain API error code.
+            if (error != nil)
+            {
+                *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
+            }
+        }
+        
+        return nil;
+    }
+  
+    NSString *password = nil;
+  
+    if (resultData)
+    {
+        password = [[NSString alloc] initWithData:resultData encoding:NSUTF8StringEncoding];
+    }
+    else
+    {
+        // There is an existing item, but we weren't able to get password data for it for some reason,
+        // Possibly as a result of an item being incorrectly entered by the previous code.
+        // Set the -1999 error so the code above us can prompt the user again.
+        if (error != nil)
+        {
+            *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-1999 userInfo:nil];
+        }
+        return nil;
+    }
+    
+    return [password autorelease];
 }
 
 
 + (BOOL)storeUsername:(NSString *)username
-		  andPassword:(NSString *)password
-	   forServiceName:(NSString *)serviceName
-		  accessGroup:(NSString *)accessGroupNameOrNil
-	   updateExisting:(BOOL)updateExisting
-				error:(NSError **)error
+          andPassword:(NSString *)password
+       forServiceName:(NSString *)serviceName
+          accessGroup:(NSString *)accessGroupNameOrNil
+       updateExisting:(BOOL)updateExisting
+                error:(NSError **)error
 {
-	NSError *getError = nil;
-	NSString *existingPassword;
+    NSError *getError = nil;
+    NSString *existingPassword;
 
-	if (([username length] == 0) || ([password length] == 0) || ([serviceName length] == 0))
-	{
-		if (error != nil) 
-		{
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
-		}
-		return NO;
-	}
-	
-	// See if we already have a password entered for these credentials.
-	existingPassword = [SFHFKeychainUtils getPasswordForUsername:username
-												  andServiceName:serviceName
-													 accessGroup:accessGroupNameOrNil
-														   error:&getError];
-	if ([getError code] == -1999) 
-	{
-		// There is an existing entry without a password properly stored (possibly as a result of the previous incorrect version of this code.
-		// Delete the existing item before moving on entering a correct one.
-		getError = nil;
-		[self deleteItemForUsername:username andServiceName:serviceName accessGroup:accessGroupNameOrNil error:&getError];
-		if ([getError code] != noErr) 
-		{
-			if (error != nil) 
-			{
-				*error = getError;
-			}
-			return NO;
-		}
-	}
-	else if ([getError code] != noErr) 
-	{
-		if (error != nil) 
-		{
-			*error = getError;
-		}
-		return NO;
-	}
+    if (([username length] == 0) || ([password length] == 0) || ([serviceName length] == 0))
+    {
+        if (error != nil)
+        {
+            *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
+        }
+        return NO;
+    }
+    
+    // See if we already have a password entered for these credentials.
+    existingPassword = [SFHFKeychainUtils getPasswordForUsername:username
+                                                  andServiceName:serviceName
+                                                     accessGroup:accessGroupNameOrNil
+                                                           error:&getError];
+    if ([getError code] == -1999)
+    {
+        // There is an existing entry without a password properly stored (possibly as a result of the previous incorrect version of this code.
+        // Delete the existing item before moving on entering a correct one.
+        getError = nil;
+        [self deleteItemForUsername:username andServiceName:serviceName accessGroup:accessGroupNameOrNil error:&getError];
+        if ([getError code] != noErr)
+        {
+            if (error != nil)
+            {
+                *error = getError;
+            }
+            return NO;
+        }
+    }
+    else if ([getError code] != noErr)
+    {
+        if (error != nil)
+        {
+            *error = getError;
+        }
+        return NO;
+    }
 
-	if (error != nil) 
-	{
-		*error = nil;
-	}
+    if (error != nil)
+    {
+        *error = nil;
+    }
 
-	OSStatus status = noErr;
+    OSStatus status = noErr;
   
-	if (existingPassword) 
-	{
-		// We have an existing, properly entered item with a password.
-		// Update the existing item.
-		
-		if (![existingPassword isEqualToString:password] && updateExisting) 
-		{
-			//Only update if we're allowed to update existing.  If not, simply do nothing.
+    if (existingPassword)
+    {
+        // We have an existing, properly entered item with a password.
+        // Update the existing item.
+        
+        if (![existingPassword isEqualToString:password] && updateExisting)
+        {
+            //Only update if we're allowed to update existing.  If not, simply do nothing.
             NSMutableDictionary *mutableQuery = [[[NSMutableDictionary alloc] init] autorelease];
             [mutableQuery setObject:kSecClassGenericPassword forKey:kSecClass];
             [mutableQuery setObject:serviceName forKey:kSecAttrService];
             [mutableQuery setObject:serviceName forKey:kSecAttrLabel];
             [mutableQuery setObject:username forKey:kSecAttrAccount];
 
-			// Check if there's a shared keychain access group name provided and set it appropriately.
+            // Check if there's a shared keychain access group name provided and set it appropriately.
             // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
-			if (accessGroupNameOrNil)
-			{
+            if (accessGroupNameOrNil)
+            {
                 // Don't add empty string as access group specifier
                 if ([accessGroupNameOrNil length] == 0)
                 {
@@ -267,18 +267,18 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
                 else
                 {
                     NSLog(@"Adding access group.");
-				
+                
                     [mutableQuery setObject:(id)accessGroupNameOrNil forKey:(id)kSecAttrAccessGroup];
                 }
-			}
-			
-			status = SecItemUpdate((CFDictionaryRef)mutableQuery, (CFDictionaryRef)[NSDictionary dictionaryWithObject:[password dataUsingEncoding:NSUTF8StringEncoding] forKey:(NSString *)kSecValueData]);
-		}
-	}
-	else 
-	{
-		// No existing entry (or an existing, improperly entered, and therefore now
-		// deleted, entry).  Create a new entry.
+            }
+            
+            status = SecItemUpdate((CFDictionaryRef)mutableQuery, (CFDictionaryRef)[NSDictionary dictionaryWithObject:[password dataUsingEncoding:NSUTF8StringEncoding] forKey:(NSString *)kSecValueData]);
+        }
+    }
+    else 
+    {
+        // No existing entry (or an existing, improperly entered, and therefore now
+        // deleted, entry).  Create a new entry.
 
         NSMutableDictionary *mutableQuery = [[[NSMutableDictionary alloc] init] autorelease];
         [mutableQuery setObject:kSecClassGenericPassword forKey:kSecClass];
@@ -287,10 +287,10 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
         [mutableQuery setObject:username forKey:kSecAttrAccount];
         [mutableQuery setObject:[password dataUsingEncoding:NSUTF8StringEncoding] forKey:kSecValueData];
 
-		// Check if there's a shared keychain access group name provided and set it appropriately.
+        // Check if there's a shared keychain access group name provided and set it appropriately.
         // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
-		if (accessGroupNameOrNil)
-		{
+        if (accessGroupNameOrNil)
+        {
             // Don't add empty string as access group specifier
             if ([accessGroupNameOrNil length] == 0)
             {
@@ -305,53 +305,53 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
                 NSLog(@"getPasswordForUsername: adding access group.");
                 [mutableQuery setObject:accessGroupNameOrNil forKey:(id)kSecAttrAccessGroup];
             }
-		}
+        }
 
-		status = SecItemAdd((CFDictionaryRef)mutableQuery, NULL);
-	}
-	
-	if (status != noErr)
-	{
-		// Something went wrong with adding the new item. Return the Keychain error code.
+        status = SecItemAdd((CFDictionaryRef)mutableQuery, NULL);
+    }
+    
+    if (status != noErr)
+    {
+        // Something went wrong with adding the new item. Return the Keychain error code.
         if (error != nil)
         {
             *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
         }
         return NO;
-	}
-	return YES;
+    }
+    return YES;
 }
 
 
 + (BOOL)deleteItemForUsername:(NSString *)username
-			   andServiceName:(NSString *)serviceName
-				  accessGroup:(NSString *)accessGroupNameOrNil
-						error:(NSError **)error
+               andServiceName:(NSString *)serviceName
+                  accessGroup:(NSString *)accessGroupNameOrNil
+                        error:(NSError **)error
 {
-	if (([username length] == 0) || ([serviceName length] == 0))
-	{
-		if (error != nil) 
-		{
-			*error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
-		}
-		return NO;
-	}
-	
-	if (error != nil) 
-	{
-		*error = nil;
-	}
-	
+    if (([username length] == 0) || ([serviceName length] == 0))
+    {
+        if (error != nil)
+        {
+            *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
+        }
+        return NO;
+    }
+    
+    if (error != nil)
+    {
+        *error = nil;
+    }
+    
     NSMutableDictionary *mutableQuery = [[[NSMutableDictionary alloc] init] autorelease];
     [mutableQuery setObject:kSecClassGenericPassword forKey:kSecClass];
     [mutableQuery setObject:username forKey:kSecAttrAccount];
     [mutableQuery setObject:serviceName forKey:kSecAttrService];
     [mutableQuery setObject:(id)kCFBooleanTrue forKey:kSecReturnAttributes];
-	
-	// Check if there's a shared keychain access group name provided and set it appropriately.
+    
+    // Check if there's a shared keychain access group name provided and set it appropriately.
     // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
-	if (accessGroupNameOrNil)
-	{
+    if (accessGroupNameOrNil)
+    {
         // Don't add empty string as access group specifier
         if ([accessGroupNameOrNil length] == 0)
         {
@@ -366,19 +366,19 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
             NSLog(@"getPasswordForUsername: adding access group.");
             [mutableQuery setObject:accessGroupNameOrNil forKey:(id)kSecAttrAccessGroup];
         }
-	}	
-	
-	OSStatus status = SecItemDelete((CFDictionaryRef)mutableQuery);
-	
-	if (status != noErr)
-	{
+    }
+    
+    OSStatus status = SecItemDelete((CFDictionaryRef)mutableQuery);
+    
+    if (status != noErr)
+    {
         if (error != nil)
         {
             *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:status userInfo:nil];
         }
-		return NO;
-	}
-	return YES;
+        return NO;
+    }
+    return YES;
 }
 
 @end
