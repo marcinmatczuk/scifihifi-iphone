@@ -68,14 +68,14 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	{
 		*error = nil;
 	}
-  
+	
 	// Set up a query dictionary with the base query attributes: item type (generic), username, and service
-	NSArray *keys = [[[NSArray alloc] initWithObjects:(NSString *)kSecClass, kSecAttrAccount, kSecAttrService, nil] autorelease];
-	NSArray *objects = [[[NSArray alloc] initWithObjects:(NSString *)kSecClassGenericPassword, username, serviceName, nil] autorelease];
-	
-	NSDictionary *query = [[[NSDictionary alloc] initWithObjects:objects forKeys:keys] autorelease];
-	
-	// First do a query for attributes, in case we already have a Keychain item with no password data set.
+    NSMutableDictionary *query = [[[NSMutableDictionary alloc] init] autorelease];
+    [query setObject:kSecClassGenericPassword forKey:kSecClass];
+    [query setObject:username forKey:kSecAttrAccount];
+    [query setObject:serviceName forKey:kSecAttrService];
+
+    // First do a query for attributes, in case we already have a Keychain item with no password data set.
 	// One likely way such an incorrect item could have come about is due to the previous (incorrect)
 	// version of this code (which set the password as a generic attribute instead of password data).
 	
@@ -85,7 +85,8 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 
 	// Check if there's a shared keychain access group name provided and set it appropriately.
     // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
-	if (accessGroupNameOrNil)
+#warning FIXME: accessGroupNameOrNil is used only for attributeQuery but should also be used for passwordQuery (2nd call of SecItemCopyMatching()) - is it a bug?
+    if (accessGroupNameOrNil)
 	{
         // Don't add empty string as access group specifier
 		if ([accessGroupNameOrNil length] == 0)
@@ -244,22 +245,11 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 		if (![existingPassword isEqualToString:password] && updateExisting) 
 		{
 			//Only update if we're allowed to update existing.  If not, simply do nothing.
-			
-			NSArray *keys = [[[NSArray alloc] initWithObjects:(NSString *)kSecClass,
-                                                              kSecAttrService,
-                                                              kSecAttrLabel,
-                                                              kSecAttrAccount,
-                                                              nil] autorelease];
-			
-			NSArray *objects = [[[NSArray alloc] initWithObjects:(NSString *)kSecClassGenericPassword,
-                                                                 serviceName,
-                                                                 serviceName,
-                                                                 username,
-                                                                 nil] autorelease];
-			
-			NSDictionary *query = [[[NSDictionary alloc] initWithObjects:objects forKeys:keys] autorelease];
-
-			NSMutableDictionary *mutableQuery = [[query mutableCopy] autorelease];
+            NSMutableDictionary *mutableQuery = [[[NSMutableDictionary alloc] init] autorelease];
+            [mutableQuery setObject:kSecClassGenericPassword forKey:kSecClass];
+            [mutableQuery setObject:serviceName forKey:kSecAttrService];
+            [mutableQuery setObject:serviceName forKey:kSecAttrLabel];
+            [mutableQuery setObject:username forKey:kSecAttrAccount];
 
 			// Check if there's a shared keychain access group name provided and set it appropriately.
             // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
@@ -289,23 +279,13 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	{
 		// No existing entry (or an existing, improperly entered, and therefore now
 		// deleted, entry).  Create a new entry.
-		NSArray *keys = [[[NSArray alloc] initWithObjects:(NSString *)kSecClass,
-                                                          kSecAttrService,
-                                                          kSecAttrLabel,
-                                                          kSecAttrAccount,
-                                                          kSecValueData,
-                                                          nil] autorelease];
-		
-		NSArray *objects = [[[NSArray alloc] initWithObjects:(NSString *)kSecClassGenericPassword,
-                                                             serviceName,
-                                                             serviceName,
-                                                             username,
-                                                             [password dataUsingEncoding:NSUTF8StringEncoding],
-                                                             nil] autorelease];
-		
-		NSDictionary *query = [[[NSDictionary alloc] initWithObjects:objects forKeys:keys] autorelease];
 
-		NSMutableDictionary *mutableQuery = [[query mutableCopy] autorelease];
+        NSMutableDictionary *mutableQuery = [[[NSMutableDictionary alloc] init] autorelease];
+        [mutableQuery setObject:kSecClassGenericPassword forKey:kSecClass];
+        [mutableQuery setObject:serviceName forKey:kSecAttrService];
+        [mutableQuery setObject:serviceName forKey:kSecAttrLabel];
+        [mutableQuery setObject:username forKey:kSecAttrAccount];
+        [mutableQuery setObject:[password dataUsingEncoding:NSUTF8StringEncoding] forKey:kSecValueData];
 
 		// Check if there's a shared keychain access group name provided and set it appropriately.
         // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
@@ -361,13 +341,12 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 	{
 		*error = nil;
 	}
-  
-	NSArray *keys = [[[NSArray alloc] initWithObjects:(NSString *)kSecClass, kSecAttrAccount, kSecAttrService, kSecReturnAttributes, nil] autorelease];
-	NSArray *objects = [[[NSArray alloc] initWithObjects:(NSString *)kSecClassGenericPassword, username, serviceName, kCFBooleanTrue, nil] autorelease];
 	
-	NSDictionary *query = [[[NSDictionary alloc] initWithObjects:objects forKeys:keys] autorelease];
-	
-	NSMutableDictionary *mutableQuery = [[query mutableCopy] autorelease];
+    NSMutableDictionary *mutableQuery = [[[NSMutableDictionary alloc] init] autorelease];
+    [mutableQuery setObject:kSecClassGenericPassword forKey:kSecClass];
+    [mutableQuery setObject:username forKey:kSecAttrAccount];
+    [mutableQuery setObject:serviceName forKey:kSecAttrService];
+    [mutableQuery setObject:(id)kCFBooleanTrue forKey:kSecReturnAttributes];
 	
 	// Check if there's a shared keychain access group name provided and set it appropriately.
     // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
