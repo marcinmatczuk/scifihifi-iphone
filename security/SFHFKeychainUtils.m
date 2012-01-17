@@ -52,6 +52,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 
 + (NSString *)getPasswordForUsername:(NSString *)username
                       andServiceName:(NSString *)serviceName
+                            uniqueID:(NSString *)uniqueIDOrNil
                          accessGroup:(NSString *)accessGroupNameOrNil
                                error:(NSError **)error
 {
@@ -85,7 +86,6 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 
     // Check if there's a shared keychain access group name provided and set it appropriately.
     // NOTE: this won't work for *pre* iOS 3.0 simulators (devices work fine).
-#warning FIXME: accessGroupNameOrNil is used only for attributeQuery but should also be used for passwordQuery (2nd call of SecItemCopyMatching()) - is it a bug?
     if (accessGroupNameOrNil)
     {
         // Don't add empty string as access group specifier
@@ -101,6 +101,23 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
         {
             NSLog(@"Adding access group.");
             [attributeQuery setObject:(id)accessGroupNameOrNil forKey:(id)kSecAttrAccessGroup];
+        }
+    }
+    if (uniqueIDOrNil)
+    {
+        // Don't add empty string as unique identifier attribute
+        if ([uniqueIDOrNil length] == 0)
+        {
+            if (error != nil)
+            {
+                *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
+            }
+            return nil;
+        }
+        else
+        {
+            NSLog(@"Adding unique identifier.");
+            [attributeQuery setObject:(id)uniqueIDOrNil forKey:(id)kSecAttrGeneric];
         }
     }
 
@@ -125,13 +142,48 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
     // We have an existing item, now query for the password data associated with it.
     
     NSData *resultData = nil;
-    NSMutableDictionary *passwordQuery = [query mutableCopy];
+    NSMutableDictionary *passwordQuery = [[query mutableCopy] autorelease];
     [passwordQuery setObject:(id)kCFBooleanTrue forKey:(id)kSecReturnData];
 
+    // Remember to uniqueIDOrNil and accessGroupNameOrNil to passwordQuery (they're not present in query object)
+    if (accessGroupNameOrNil)
+    {
+        // Don't add empty string as access group specifier
+        if ([accessGroupNameOrNil length] == 0)
+        {
+            if (error != nil)
+            {
+                *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
+            }
+            return nil;
+        }
+        else
+        {
+            NSLog(@"Adding access group.");
+            [passwordQuery setObject:(id)accessGroupNameOrNil forKey:(id)kSecAttrAccessGroup];
+        }
+    }
+    if (uniqueIDOrNil)
+    {
+        // Don't add empty string as unique identifier attribute
+        if ([uniqueIDOrNil length] == 0)
+        {
+            if (error != nil)
+            {
+                *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
+            }
+            return nil;
+        }
+        else
+        {
+            NSLog(@"Adding unique identifier.");
+            [passwordQuery setObject:(id)uniqueIDOrNil forKey:(id)kSecAttrGeneric];
+        }
+    }
+    
     status = SecItemCopyMatching((CFDictionaryRef)passwordQuery, (CFTypeRef *)&resultData);
 
     [resultData autorelease];
-    [passwordQuery release];
     
     if (status != noErr)
     {
@@ -185,6 +237,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 + (BOOL)storeUsername:(NSString *)username
           andPassword:(NSString *)password
        forServiceName:(NSString *)serviceName
+             uniqueID:(NSString *)uniqueIDOrNil
           accessGroup:(NSString *)accessGroupNameOrNil
        updateExisting:(BOOL)updateExisting
                 error:(NSError **)error
@@ -204,6 +257,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
     // See if we already have a password entered for these credentials.
     existingPassword = [SFHFKeychainUtils getPasswordForUsername:username
                                                   andServiceName:serviceName
+                                                        uniqueID:uniqueIDOrNil
                                                      accessGroup:accessGroupNameOrNil
                                                            error:&getError];
     if ([getError code] == -1999)
@@ -211,7 +265,11 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
         // There is an existing entry without a password properly stored (possibly as a result of the previous incorrect version of this code.
         // Delete the existing item before moving on entering a correct one.
         getError = nil;
-        [self deleteItemForUsername:username andServiceName:serviceName accessGroup:accessGroupNameOrNil error:&getError];
+        [self deleteItemForUsername:username
+                     andServiceName:serviceName
+                           uniqueID:uniqueIDOrNil
+                        accessGroup:accessGroupNameOrNil
+                              error:&getError];
         if ([getError code] != noErr)
         {
             if (error != nil)
@@ -271,6 +329,23 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
                     [mutableQuery setObject:(id)accessGroupNameOrNil forKey:(id)kSecAttrAccessGroup];
                 }
             }
+            if (uniqueIDOrNil)
+            {
+                // Don't add empty string as unique identifier attribute
+                if ([uniqueIDOrNil length] == 0)
+                {
+                    if (error != nil)
+                    {
+                        *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
+                    }
+                    return NO;
+                }
+                else
+                {
+                    NSLog(@"Adding unique identifier.");
+                    [mutableQuery setObject:(id)uniqueIDOrNil forKey:(id)kSecAttrGeneric];
+                }
+            }
             
             status = SecItemUpdate((CFDictionaryRef)mutableQuery, (CFDictionaryRef)[NSDictionary dictionaryWithObject:[password dataUsingEncoding:NSUTF8StringEncoding] forKey:(NSString *)kSecValueData]);
         }
@@ -306,6 +381,23 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
                 [mutableQuery setObject:accessGroupNameOrNil forKey:(id)kSecAttrAccessGroup];
             }
         }
+        if (uniqueIDOrNil)
+        {
+            // Don't add empty string as unique identifier attribute
+            if ([uniqueIDOrNil length] == 0)
+            {
+                if (error != nil)
+                {
+                    *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
+                }
+                return NO;
+            }
+            else
+            {
+                NSLog(@"Adding unique identifier.");
+                [mutableQuery setObject:(id)uniqueIDOrNil forKey:(id)kSecAttrGeneric];
+            }
+        }
 
         status = SecItemAdd((CFDictionaryRef)mutableQuery, NULL);
     }
@@ -325,6 +417,7 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
 
 + (BOOL)deleteItemForUsername:(NSString *)username
                andServiceName:(NSString *)serviceName
+                     uniqueID:(NSString *)uniqueIDOrNil
                   accessGroup:(NSString *)accessGroupNameOrNil
                         error:(NSError **)error
 {
@@ -365,6 +458,23 @@ static NSString *SFHFKeychainUtilsErrorDomain = @"SFHFKeychainUtilsErrorDomain";
         {
             NSLog(@"getPasswordForUsername: adding access group.");
             [mutableQuery setObject:accessGroupNameOrNil forKey:(id)kSecAttrAccessGroup];
+        }
+    }
+    if (uniqueIDOrNil)
+    {
+        // Don't add empty string as unique identifier attribute
+        if ([uniqueIDOrNil length] == 0)
+        {
+            if (error != nil)
+            {
+                *error = [NSError errorWithDomain:SFHFKeychainUtilsErrorDomain code:-2000 userInfo:nil];
+            }
+            return NO;
+        }
+        else
+        {
+            NSLog(@"Adding unique identifier.");
+            [mutableQuery setObject:(id)uniqueIDOrNil forKey:(id)kSecAttrGeneric];
         }
     }
     
